@@ -253,7 +253,7 @@ everything-claude-code/
 /plugin marketplace add kimliss/everything-claude-code
 
 # 安装插件
-/plugin install everything-claude-code@everything-claude-code
+/plugin install ecc@ecc
 ```
 
 或直接添加到你的 `~/.claude/settings.json`：

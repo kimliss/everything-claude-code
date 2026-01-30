@@ -215,7 +215,7 @@ everything-claude-code/
 /plugin marketplace add kimliss/everything-claude-code
 
 # 安裝外掛程式
-/plugin install everything-claude-code@everything-claude-code
+/plugin install ecc@ecc
 ```
 
 或直接新增到您的 `~/.claude/settings.json`：

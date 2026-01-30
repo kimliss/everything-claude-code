@@ -282,7 +282,7 @@ The easiest way to use this repo - install as a Claude Code plugin:
 /plugin marketplace add kimliss/everything-claude-code
 
 # Install the plugin
-/plugin install everything-claude-code@everything-claude-code
+/plugin install ecc@ecc
 ```
 
 Or add directly to your `~/.claude/settings.json`:
