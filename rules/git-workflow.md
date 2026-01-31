@@ -26,6 +26,7 @@ When creating PRs:
 1. **Plan First**
    - Use **planner** agent to create implementation plan
    - Identify dependencies and risks
+   - Define API contracts (protobuf/OpenAPI) early
    - Break down into phases
 
 2. **TDD Approach**
@@ -37,9 +38,11 @@ When creating PRs:
 
 3. **Code Review**
    - Use **code-reviewer** agent immediately after writing code
+   - Run `go vet` and `golangci-lint run` before review
    - Address CRITICAL and HIGH issues
    - Fix MEDIUM issues when possible
 
 4. **Commit & Push**
    - Detailed commit messages
    - Follow conventional commits format
+   - Ensure `go build ./...` and `go test ./...` pass before push

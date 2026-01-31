@@ -38,10 +38,31 @@ For complex tasks requiring deep reasoning:
 3. "Rev the engine" with multiple critique rounds
 4. Use split role sub-agents for diverse analysis
 
+## Go Microservice Performance
+
+### Profiling
+- Use `pprof` for CPU and memory profiling
+- Use `go test -bench` for benchmarking critical paths
+- Profile before optimizing — avoid premature optimization
+
+### Common Optimizations
+- Use `sync.Pool` for frequently allocated objects
+- Prefer `strings.Builder` over `+` for string concatenation
+- Use buffered channels when appropriate
+- Set proper `GOMAXPROCS` for container environments
+- Use connection pooling for database and HTTP clients
+
+### Database
+- Always use prepared statements
+- Use connection pool settings (`SetMaxOpenConns`, `SetMaxIdleConns`, `SetConnMaxLifetime`)
+- Add proper indexes — use `EXPLAIN` to verify query plans
+- Use batch operations for bulk inserts/updates
+
 ## Build Troubleshooting
 
 If build fails:
 1. Use **build-error-resolver** agent
-2. Analyze error messages
-3. Fix incrementally
-4. Verify after each fix
+2. Run `go build ./...` to see all compile errors
+3. Run `go vet ./...` for static analysis issues
+4. Fix incrementally
+5. Verify after each fix with `go test ./...`

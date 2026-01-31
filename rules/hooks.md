@@ -9,18 +9,20 @@
 ## Current Hooks (in ~/.claude/settings.json)
 
 ### PreToolUse
-- **tmux reminder**: Suggests tmux for long-running commands (npm, pnpm, yarn, cargo, etc.)
-- **git push review**: Opens Zed for review before push
+- **tmux reminder**: Suggests tmux for long-running commands (go build, go test, docker compose, etc.)
+- **git push review**: Opens editor for review before push
 - **doc blocker**: Blocks creation of unnecessary .md/.txt files
 
 ### PostToolUse
 - **PR creation**: Logs PR URL and GitHub Actions status
-- **Prettier**: Auto-formats JS/TS files after edit
-- **TypeScript check**: Runs tsc after editing .ts/.tsx files
-- **console.log warning**: Warns about console.log in edited files
+- **gofmt**: Auto-formats Go files after edit (`gofmt -w`)
+- **go vet**: Runs `go vet ./...` after editing .go files
+- **golangci-lint**: Runs linter after editing .go files
+- **fmt.Println warning**: Warns about `fmt.Println` / `fmt.Printf` debug statements in edited files
 
 ### Stop
-- **console.log audit**: Checks all modified files for console.log before session ends
+- **debug audit**: Checks all modified .go files for debug print statements before session ends
+- **go test**: Runs `go test ./...` to verify no regressions
 
 ## Auto-Accept Permissions
 

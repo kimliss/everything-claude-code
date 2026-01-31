@@ -3,7 +3,6 @@
  * Skill Creator - Pretty Output Formatter
  *
  * Creates beautiful terminal output for the /skill-create command
- * similar to @mvanhorn's /last30days skill
  */
 
 // ANSI color codes - no external dependencies
@@ -175,60 +174,60 @@ ${chalk.yellow('4.')} Evolve into skills: ${chalk.cyan('/evolve')}
 
 // Demo function to show the output
 async function demo() {
-  const output = new SkillCreateOutput('PMX');
+  const output = new SkillCreateOutput('user-service');
 
   output.header();
 
   await output.analyzePhase({
-    commits: 200,
+    commits: 320,
   });
 
   output.analysisResults({
-    commits: 200,
-    timeRange: 'Nov 2024 - Jan 2025',
-    contributors: 4,
-    files: 847,
+    commits: 320,
+    timeRange: 'Jun 2025 - Jan 2026',
+    contributors: 5,
+    files: 156,
   });
 
   output.patterns([
     {
       name: 'Conventional Commits',
       trigger: 'when writing commit messages',
-      confidence: 0.85,
-      evidence: 'Found in 150/200 commits (feat:, fix:, refactor:)',
-    },
-    {
-      name: 'Client/Server Component Split',
-      trigger: 'when creating Next.js pages',
       confidence: 0.90,
-      evidence: 'Observed in markets/, premarkets/, portfolio/',
+      evidence: 'Found in 280/320 commits (feat:, fix:, refactor:)',
     },
     {
-      name: 'Service Layer Architecture',
-      trigger: 'when adding backend logic',
+      name: 'Repository Pattern',
+      trigger: 'when adding data access layers',
+      confidence: 0.92,
+      evidence: 'Consistent interface + struct pattern in user/, order/, product/',
+    },
+    {
+      name: 'Constructor Injection',
+      trigger: 'when wiring dependencies',
+      confidence: 0.88,
+      evidence: 'NewService/NewHandler constructors with interface params',
+    },
+    {
+      name: 'Table-Driven Tests',
+      trigger: 'when writing Go tests',
       confidence: 0.85,
-      evidence: 'Business logic in services/, not routes/',
-    },
-    {
-      name: 'TDD with E2E Tests',
-      trigger: 'when adding features',
-      confidence: 0.75,
-      evidence: '9 E2E test files, test(e2e) commits common',
+      evidence: '45 test files using []struct{} test case pattern',
     },
   ]);
 
   output.instincts([
-    { name: 'pmx-conventional-commits', confidence: 0.85 },
-    { name: 'pmx-client-component-pattern', confidence: 0.90 },
-    { name: 'pmx-service-layer', confidence: 0.85 },
-    { name: 'pmx-e2e-test-location', confidence: 0.90 },
-    { name: 'pmx-package-manager', confidence: 0.95 },
-    { name: 'pmx-hot-path-caution', confidence: 0.90 },
+    { name: 'svc-conventional-commits', confidence: 0.90 },
+    { name: 'svc-repository-pattern', confidence: 0.92 },
+    { name: 'svc-constructor-injection', confidence: 0.88 },
+    { name: 'svc-table-driven-tests', confidence: 0.85 },
+    { name: 'svc-error-wrapping', confidence: 0.90 },
+    { name: 'svc-graceful-shutdown', confidence: 0.95 },
   ]);
 
   output.output(
-    '.claude/skills/pmx-patterns/SKILL.md',
-    '.claude/homunculus/instincts/inherited/pmx-instincts.yaml'
+    '.claude/skills/svc-patterns/SKILL.md',
+    '.claude/homunculus/instincts/inherited/svc-instincts.yaml'
   );
 
   output.nextSteps();

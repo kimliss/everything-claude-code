@@ -6,6 +6,7 @@
  *
  * Runs when a new Claude session starts. Checks for recent session
  * files and notifies Claude of available context to load.
+ * Detects Go toolchain availability.
  */
 
 const {
@@ -15,7 +16,7 @@ const {
   ensureDir,
   log
 } = require('../lib/utils');
-const { getPackageManager, getSelectionPrompt } = require('../lib/package-manager');
+const { getPackageManager, getSelectionPrompt, getMissingRequired } = require('../lib/package-manager');
 
 async function main() {
   const sessionsDir = getSessionsDir();
@@ -26,7 +27,6 @@ async function main() {
   ensureDir(learnedDir);
 
   // Check for recent session files (last 7 days)
-  // Match both old format (YYYY-MM-DD-session.tmp) and new format (YYYY-MM-DD-shortid-session.tmp)
   const recentSessions = findFiles(sessionsDir, '*-session.tmp', { maxAge: 7 });
 
   if (recentSessions.length > 0) {
@@ -42,13 +42,19 @@ async function main() {
     log(`[SessionStart] ${learnedSkills.length} learned skill(s) available in ${learnedDir}`);
   }
 
-  // Detect and report package manager
-  const pm = getPackageManager();
-  log(`[SessionStart] Package manager: ${pm.name} (${pm.source})`);
+  // Detect and report Go toolchain
+  const toolchain = getPackageManager();
+  if (toolchain.isGoProject) {
+    log(`[SessionStart] Go project detected: ${toolchain.moduleName || 'unknown module'}`);
+    log(`[SessionStart] Go version: ${toolchain.goVersion || 'not specified in go.mod'}`);
+    log(`[SessionStart] Available tools: ${toolchain.availableTools.join(', ')}`);
 
-  // If package manager was detected via fallback, show selection prompt
-  if (pm.source === 'fallback' || pm.source === 'default') {
-    log('[SessionStart] No package manager preference found.');
+    const missing = getMissingRequired();
+    if (missing.length > 0) {
+      log(`[SessionStart] WARNING: Missing required tools: ${missing.join(', ')}`);
+    }
+  } else {
+    log('[SessionStart] No go.mod found - not a Go project or not in project root');
     log(getSelectionPrompt());
   }
 

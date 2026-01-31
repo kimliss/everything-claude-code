@@ -1,68 +1,81 @@
 /**
- * Package Manager Detection and Selection
- * Automatically detects the preferred package manager or lets user choose
+ * Go Toolchain Detection and Configuration
+ * Automatically detects Go development tools and their availability
  *
- * Supports: npm, pnpm, yarn, bun
+ * Supports: go, golangci-lint, air, buf, protoc, wire, mockgen
  */
 
 const fs = require('fs');
 const path = require('path');
 const { commandExists, getClaudeDir, readFile, writeFile } = require('./utils');
 
-// Package manager definitions
-const PACKAGE_MANAGERS = {
-  npm: {
-    name: 'npm',
-    lockFile: 'package-lock.json',
-    installCmd: 'npm install',
-    runCmd: 'npm run',
-    execCmd: 'npx',
-    testCmd: 'npm test',
-    buildCmd: 'npm run build',
-    devCmd: 'npm run dev'
+// Go tool definitions
+const GO_TOOLS = {
+  go: {
+    name: 'go',
+    description: 'Go compiler and toolchain',
+    required: true,
+    checkCmd: 'go',
+    buildCmd: 'go build ./...',
+    testCmd: 'go test ./...',
+    runCmd: 'go run',
+    fmtCmd: 'gofmt -w',
+    vetCmd: 'go vet ./...'
   },
-  pnpm: {
-    name: 'pnpm',
-    lockFile: 'pnpm-lock.yaml',
-    installCmd: 'pnpm install',
-    runCmd: 'pnpm',
-    execCmd: 'pnpm dlx',
-    testCmd: 'pnpm test',
-    buildCmd: 'pnpm build',
-    devCmd: 'pnpm dev'
+  'golangci-lint': {
+    name: 'golangci-lint',
+    description: 'Go linter aggregator',
+    required: false,
+    checkCmd: 'golangci-lint',
+    lintCmd: 'golangci-lint run ./...'
   },
-  yarn: {
-    name: 'yarn',
-    lockFile: 'yarn.lock',
-    installCmd: 'yarn',
-    runCmd: 'yarn',
-    execCmd: 'yarn dlx',
-    testCmd: 'yarn test',
-    buildCmd: 'yarn build',
-    devCmd: 'yarn dev'
+  air: {
+    name: 'air',
+    description: 'Live reload for Go apps',
+    required: false,
+    checkCmd: 'air',
+    devCmd: 'air'
   },
-  bun: {
-    name: 'bun',
-    lockFile: 'bun.lockb',
-    installCmd: 'bun install',
-    runCmd: 'bun run',
-    execCmd: 'bunx',
-    testCmd: 'bun test',
-    buildCmd: 'bun run build',
-    devCmd: 'bun run dev'
+  buf: {
+    name: 'buf',
+    description: 'Protocol buffer toolchain',
+    required: false,
+    checkCmd: 'buf',
+    genCmd: 'buf generate'
+  },
+  protoc: {
+    name: 'protoc',
+    description: 'Protocol buffer compiler',
+    required: false,
+    checkCmd: 'protoc'
+  },
+  wire: {
+    name: 'wire',
+    description: 'Compile-time dependency injection',
+    required: false,
+    checkCmd: 'wire'
+  },
+  mockgen: {
+    name: 'mockgen',
+    description: 'Mock generator for Go interfaces',
+    required: false,
+    checkCmd: 'mockgen'
+  },
+  'docker-compose': {
+    name: 'docker compose',
+    description: 'Container orchestration for local dev',
+    required: false,
+    checkCmd: 'docker'
   }
 };
 
-// Priority order for detection
-const DETECTION_PRIORITY = ['pnpm', 'bun', 'yarn', 'npm'];
-
 // Config file path
 function getConfigPath() {
-  return path.join(getClaudeDir(), 'package-manager.json');
+  return path.join(getClaudeDir(), 'go-toolchain.json');
 }
 
 /**
- * Load saved package manager configuration
+ * Load saved Go toolchain configuration
  */
 function loadConfig() {
   const configPath = getConfigPath();
@@ -79,7 +92,7 @@ function loadConfig() {
 }
 
 /**
- * Save package manager configuration
+ * Save Go toolchain configuration
  */
 function saveConfig(config) {
   const configPath = getConfigPath();
@@ -87,53 +100,47 @@ function saveConfig(config) {
 }
 
 /**
- * Detect package manager from lock file in project directory
+ * Detect if current directory is a Go project
  */
-function detectFromLockFile(projectDir = process.cwd()) {
-  for (const pmName of DETECTION_PRIORITY) {
-    const pm = PACKAGE_MANAGERS[pmName];
-    const lockFilePath = path.join(projectDir, pm.lockFile);
-
-    if (fs.existsSync(lockFilePath)) {
-      return pmName;
-    }
-  }
-  return null;
+function isGoProject(projectDir = process.cwd()) {
+  return fs.existsSync(path.join(projectDir, 'go.mod'));
 }
 
 /**
- * Detect package manager from package.json packageManager field
+ * Get Go module name from go.mod
  */
-function detectFromPackageJson(projectDir = process.cwd()) {
-  const packageJsonPath = path.join(projectDir, 'package.json');
-  const content = readFile(packageJsonPath);
-
+function getModuleName(projectDir = process.cwd()) {
+  const goModPath = path.join(projectDir, 'go.mod');
+  const content = readFile(goModPath);
   if (content) {
-    try {
-      const pkg = JSON.parse(content);
-      if (pkg.packageManager) {
-        // Format: "pnpm@8.6.0" or just "pnpm"
-        const pmName = pkg.packageManager.split('@')[0];
-        if (PACKAGE_MANAGERS[pmName]) {
-          return pmName;
-        }
-      }
-    } catch {
-      // Invalid package.json
-    }
+    const match = content.match(/^module\s+(.+)$/m);
+    if (match) return match[1].trim();
   }
   return null;
 }
 
 /**
- * Get available package managers (installed on system)
+ * Get Go version from go.mod
  */
-function getAvailablePackageManagers() {
+function getGoVersion(projectDir = process.cwd()) {
+  const goModPath = path.join(projectDir, 'go.mod');
+  const content = readFile(goModPath);
+  if (content) {
+    const match = content.match(/^go\s+(.+)$/m);
+    if (match) return match[1].trim();
+  }
+  return null;
+}
+
+/**
+ * Get available Go tools (installed on system)
+ */
+function getAvailableTools() {
   const available = [];
 
-  for (const pmName of Object.keys(PACKAGE_MANAGERS)) {
-    if (commandExists(pmName)) {
-      available.push(pmName);
+  for (const [toolName, tool] of Object.entries(GO_TOOLS)) {
+    if (commandExists(tool.checkCmd)) {
+      available.push(toolName);
     }
   }
 
@@ -141,250 +148,107 @@ function getAvailablePackageManagers() {
 }
 
 /**
- * Get the package manager to use for current project
+ * Get missing required tools
+ */
+function getMissingRequired() {
+  const missing = [];
+
+  for (const [toolName, tool] of Object.entries(GO_TOOLS)) {
+    if (tool.required && !commandExists(tool.checkCmd)) {
+      missing.push(toolName);
+    }
+  }
+
+  return missing;
+}
+
+/**
+ * Get the Go toolchain info for the current project
  *
- * Detection priority:
- * 1. Environment variable CLAUDE_PACKAGE_MANAGER
- * 2. Project-specific config (in .claude/package-manager.json)
- * 3. package.json packageManager field
- * 4. Lock file detection
- * 5. Global user preference (in ~/.claude/package-manager.json)
- * 6. First available package manager (by priority)
- *
- * @param {object} options - { projectDir, fallbackOrder }
- * @returns {object} - { name, config, source }
+ * @param {object} options - { projectDir }
+ * @returns {object} - { name, goVersion, moduleName, tools, source }
  */
 function getPackageManager(options = {}) {
-  const { projectDir = process.cwd(), fallbackOrder = DETECTION_PRIORITY } = options;
+  const { projectDir = process.cwd() } = options;
 
-  // 1. Check environment variable
-  const envPm = process.env.CLAUDE_PACKAGE_MANAGER;
-  if (envPm && PACKAGE_MANAGERS[envPm]) {
-    return {
-      name: envPm,
-      config: PACKAGE_MANAGERS[envPm],
-      source: 'environment'
-    };
+  const available = getAvailableTools();
+  const moduleName = getModuleName(projectDir);
+  const goVersion = getGoVersion(projectDir);
+  const isGo = isGoProject(projectDir);
+
+  let source = 'detection';
+
+  // Check environment variable override
+  if (process.env.CLAUDE_GO_TOOLS_CONFIG) {
+    source = 'environment';
   }
 
-  // 2. Check project-specific config
-  const projectConfigPath = path.join(projectDir, '.claude', 'package-manager.json');
-  const projectConfig = readFile(projectConfigPath);
-  if (projectConfig) {
-    try {
-      const config = JSON.parse(projectConfig);
-      if (config.packageManager && PACKAGE_MANAGERS[config.packageManager]) {
-        return {
-          name: config.packageManager,
-          config: PACKAGE_MANAGERS[config.packageManager],
-          source: 'project-config'
-        };
-      }
-    } catch {
-      // Invalid config
-    }
+  // Check project config
+  const projectConfigPath = path.join(projectDir, '.claude', 'go-toolchain.json');
+  if (fs.existsSync(projectConfigPath)) {
+    source = 'project-config';
   }
 
-  // 3. Check package.json packageManager field
-  const fromPackageJson = detectFromPackageJson(projectDir);
-  if (fromPackageJson) {
-    return {
-      name: fromPackageJson,
-      config: PACKAGE_MANAGERS[fromPackageJson],
-      source: 'package.json'
-    };
-  }
-
-  // 4. Check lock file
-  const fromLockFile = detectFromLockFile(projectDir);
-  if (fromLockFile) {
-    return {
-      name: fromLockFile,
-      config: PACKAGE_MANAGERS[fromLockFile],
-      source: 'lock-file'
-    };
-  }
-
-  // 5. Check global user preference
-  const globalConfig = loadConfig();
-  if (globalConfig && globalConfig.packageManager && PACKAGE_MANAGERS[globalConfig.packageManager]) {
-    return {
-      name: globalConfig.packageManager,
-      config: PACKAGE_MANAGERS[globalConfig.packageManager],
-      source: 'global-config'
-    };
-  }
-
-  // 6. Use first available package manager
-  const available = getAvailablePackageManagers();
-  for (const pmName of fallbackOrder) {
-    if (available.includes(pmName)) {
-      return {
-        name: pmName,
-        config: PACKAGE_MANAGERS[pmName],
-        source: 'fallback'
-      };
-    }
-  }
-
-  // Default to npm (always available with Node.js)
   return {
-    name: 'npm',
-    config: PACKAGE_MANAGERS.npm,
-    source: 'default'
+    name: 'go',
+    config: GO_TOOLS.go,
+    source: source,
+    isGoProject: isGo,
+    goVersion: goVersion,
+    moduleName: moduleName,
+    availableTools: available
   };
 }
 
 /**
- * Set user's preferred package manager (global)
- */
-function setPreferredPackageManager(pmName) {
-  if (!PACKAGE_MANAGERS[pmName]) {
-    throw new Error(`Unknown package manager: ${pmName}`);
-  }
-
-  const config = loadConfig() || {};
-  config.packageManager = pmName;
-  config.setAt = new Date().toISOString();
-  saveConfig(config);
-
-  return config;
-}
-
-/**
- * Set project's preferred package manager
- */
-function setProjectPackageManager(pmName, projectDir = process.cwd()) {
-  if (!PACKAGE_MANAGERS[pmName]) {
-    throw new Error(`Unknown package manager: ${pmName}`);
-  }
-
-  const configDir = path.join(projectDir, '.claude');
-  const configPath = path.join(configDir, 'package-manager.json');
-
-  const config = {
-    packageManager: pmName,
-    setAt: new Date().toISOString()
-  };
-
-  writeFile(configPath, JSON.stringify(config, null, 2));
-  return config;
-}
-
-/**
- * Get the command to run a script
- * @param {string} script - Script name (e.g., "dev", "build", "test")
- * @param {object} options - { projectDir }
- */
-function getRunCommand(script, options = {}) {
-  const pm = getPackageManager(options);
-
-  switch (script) {
-    case 'install':
-      return pm.config.installCmd;
-    case 'test':
-      return pm.config.testCmd;
-    case 'build':
-      return pm.config.buildCmd;
-    case 'dev':
-      return pm.config.devCmd;
-    default:
-      return `${pm.config.runCmd} ${script}`;
-  }
-}
-
-/**
- * Get the command to execute a package binary
- * @param {string} binary - Binary name (e.g., "prettier", "eslint")
- * @param {string} args - Arguments to pass
- */
-function getExecCommand(binary, args = '', options = {}) {
-  const pm = getPackageManager(options);
-  return `${pm.config.execCmd} ${binary}${args ? ' ' + args : ''}`;
-}
-
-/**
- * Interactive prompt for package manager selection
+ * Interactive prompt for Go toolchain status
  * Returns a message for Claude to show to user
  */
 function getSelectionPrompt() {
-  const available = getAvailablePackageManagers();
-  const current = getPackageManager();
+  const available = getAvailableTools();
+  const missing = getMissingRequired();
+  const moduleName = getModuleName();
+  const goVersion = getGoVersion();
 
-  let message = '[PackageManager] Available package managers:\n';
+  let message = '[GoToolchain] Go development environment:\n';
 
-  for (const pmName of available) {
-    const indicator = pmName === current.name ? ' (current)' : '';
-    message += `  - ${pmName}${indicator}\n`;
+  if (moduleName) {
+    message += `  Module: ${moduleName}\n`;
+  }
+  if (goVersion) {
+    message += `  Go version: ${goVersion}\n`;
   }
 
-  message += '\nTo set your preferred package manager:\n';
-  message += '  - Global: Set CLAUDE_PACKAGE_MANAGER environment variable\n';
-  message += '  - Or add to ~/.claude/package-manager.json: {"packageManager": "pnpm"}\n';
-  message += '  - Or add to package.json: {"packageManager": "pnpm@8"}\n';
+  message += '\n  Available tools:\n';
+  for (const [toolName, tool] of Object.entries(GO_TOOLS)) {
+    const installed = available.includes(toolName);
+    const indicator = installed ? '✓' : '✗';
+    const required = tool.required ? ' (required)' : '';
+    message += `    ${indicator} ${toolName} - ${tool.description}${required}\n`;
+  }
+
+  if (missing.length > 0) {
+    message += `\n  Missing required tools: ${missing.join(', ')}\n`;
+    message += '  Install Go: https://go.dev/dl/\n';
+  }
+
+  message += '\n  Recommended optional tools:\n';
+  message += '    go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest\n';
+  message += '    go install github.com/air-verse/air@latest\n';
+  message += '    go install go.uber.org/mock/mockgen@latest\n';
 
   return message;
 }
 
-/**
- * Generate a regex pattern that matches commands for all package managers
- * @param {string} action - Action pattern (e.g., "run dev", "install", "test")
- */
-function getCommandPattern(action) {
-  const patterns = [];
-
-  if (action === 'dev') {
-    patterns.push(
-      'npm run dev',
-      'pnpm( run)? dev',
-      'yarn dev',
-      'bun run dev'
-    );
-  } else if (action === 'install') {
-    patterns.push(
-      'npm install',
-      'pnpm install',
-      'yarn( install)?',
-      'bun install'
-    );
-  } else if (action === 'test') {
-    patterns.push(
-      'npm test',
-      'pnpm test',
-      'yarn test',
-      'bun test'
-    );
-  } else if (action === 'build') {
-    patterns.push(
-      'npm run build',
-      'pnpm( run)? build',
-      'yarn build',
-      'bun run build'
-    );
-  } else {
-    // Generic run command
-    patterns.push(
-      `npm run ${action}`,
-      `pnpm( run)? ${action}`,
-      `yarn ${action}`,
-      `bun run ${action}`
-    );
-  }
-
-  return `(${patterns.join('|')})`;
-}
-
 module.exports = {
-  PACKAGE_MANAGERS,
-  DETECTION_PRIORITY,
+  GO_TOOLS,
   getPackageManager,
-  setPreferredPackageManager,
-  setProjectPackageManager,
-  getAvailablePackageManagers,
-  detectFromLockFile,
-  detectFromPackageJson,
-  getRunCommand,
-  getExecCommand,
+  getAvailableTools,
+  getMissingRequired,
+  isGoProject,
+  getModuleName,
+  getGoVersion,
   getSelectionPrompt,
-  getCommandPattern
+  loadConfig,
+  saveConfig
 };
