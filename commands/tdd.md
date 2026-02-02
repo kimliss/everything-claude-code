@@ -4,7 +4,7 @@ description: Enforce test-driven development workflow. Scaffold interfaces, gene
 
 # TDD Command
 
-This command invokes the **tdd-guide** agent to enforce test-driven development methodology.
+This command invokes the **tdd-guide** agent to enforce test-driven development methodology for Go projects.
 
 ## What This Command Does
 
@@ -18,7 +18,7 @@ This command invokes the **tdd-guide** agent to enforce test-driven development 
 
 Use `/tdd` when:
 - Implementing new features
-- Adding new functions/components
+- Adding new functions/packages
 - Fixing bugs (write test that reproduces bug first)
 - Refactoring existing code
 - Building critical business logic
@@ -56,184 +56,257 @@ Agent (tdd-guide):
 
 ## Step 1: Define Interface (SCAFFOLD)
 
-```typescript
-// lib/liquidity.ts
-export interface MarketData {
-  totalVolume: number
-  bidAskSpread: number
-  activeTraders: number
-  lastTradeTime: Date
+```go
+// internal/liquidity/liquidity.go
+package liquidity
+
+import "time"
+
+// MarketData represents market data for liquidity calculation
+type MarketData struct {
+    TotalVolume   float64
+    BidAskSpread  float64
+    ActiveTraders int
+    LastTradeTime time.Time
 }
 
-export function calculateLiquidityScore(market: MarketData): number {
-  // TODO: Implementation
-  throw new Error('Not implemented')
+// CalculateLiquidityScore computes a liquidity score (0-100) for a market
+func CalculateLiquidityScore(market MarketData) float64 {
+    // TODO: Implementation
+    panic("not implemented")
 }
 ```
 
 ## Step 2: Write Failing Test (RED)
 
-```typescript
-// lib/liquidity.test.ts
-import { calculateLiquidityScore } from './liquidity'
+```go
+// internal/liquidity/liquidity_test.go
+package liquidity_test
 
-describe('calculateLiquidityScore', () => {
-  it('should return high score for liquid market', () => {
-    const market = {
-      totalVolume: 100000,
-      bidAskSpread: 0.01,
-      activeTraders: 500,
-      lastTradeTime: new Date()
+import (
+    "testing"
+    "time"
+
+    "yourproject/internal/liquidity"
+)
+
+func TestCalculateLiquidityScore_HighLiquidity(t *testing.T) {
+    market := liquidity.MarketData{
+        TotalVolume:   100000,
+        BidAskSpread:  0.01,
+        ActiveTraders: 500,
+        LastTradeTime: time.Now(),
     }
 
-    const score = calculateLiquidityScore(market)
+    score := liquidity.CalculateLiquidityScore(market)
 
-    expect(score).toBeGreaterThan(80)
-    expect(score).toBeLessThanOrEqual(100)
-  })
+    if score <= 80 {
+        t.Errorf("Expected high liquidity score > 80, got %.2f", score)
+    }
+    if score > 100 {
+        t.Errorf("Expected score <= 100, got %.2f", score)
+    }
+}
 
-  it('should return low score for illiquid market', () => {
-    const market = {
-      totalVolume: 100,
-      bidAskSpread: 0.5,
-      activeTraders: 2,
-      lastTradeTime: new Date(Date.now() - 86400000) // 1 day ago
+func TestCalculateLiquidityScore_LowLiquidity(t *testing.T) {
+    market := liquidity.MarketData{
+        TotalVolume:   100,
+        BidAskSpread:  0.5,
+        ActiveTraders: 2,
+        LastTradeTime: time.Now().Add(-24 * time.Hour), // 1 day ago
     }
 
-    const score = calculateLiquidityScore(market)
+    score := liquidity.CalculateLiquidityScore(market)
 
-    expect(score).toBeLessThan(30)
-    expect(score).toBeGreaterThanOrEqual(0)
-  })
+    if score >= 30 {
+        t.Errorf("Expected low liquidity score < 30, got %.2f", score)
+    }
+    if score < 0 {
+        t.Errorf("Expected score >= 0, got %.2f", score)
+    }
+}
 
-  it('should handle edge case: zero volume', () => {
-    const market = {
-      totalVolume: 0,
-      bidAskSpread: 0,
-      activeTraders: 0,
-      lastTradeTime: new Date()
+func TestCalculateLiquidityScore_ZeroVolume(t *testing.T) {
+    market := liquidity.MarketData{
+        TotalVolume:   0,
+        BidAskSpread:  0,
+        ActiveTraders: 0,
+        LastTradeTime: time.Now(),
     }
 
-    const score = calculateLiquidityScore(market)
+    score := liquidity.CalculateLiquidityScore(market)
 
-    expect(score).toBe(0)
-  })
-})
+    if score != 0 {
+        t.Errorf("Expected score 0 for zero volume, got %.2f", score)
+    }
+}
 ```
 
 ## Step 3: Run Tests - Verify FAIL
 
 ```bash
-npm test lib/liquidity.test.ts
+go test ./internal/liquidity/...
 
-FAIL lib/liquidity.test.ts
-  ✕ should return high score for liquid market (2 ms)
-    Error: Not implemented
+--- FAIL: TestCalculateLiquidityScore_HighLiquidity (0.00s)
+panic: not implemented
 
-1 test failed, 0 passed
+FAIL    yourproject/internal/liquidity  0.001s
 ```
 
 ✅ Tests fail as expected. Ready to implement.
 
 ## Step 4: Implement Minimal Code (GREEN)
 
-```typescript
-// lib/liquidity.ts
-export function calculateLiquidityScore(market: MarketData): number {
-  // Handle zero volume edge case
-  if (market.totalVolume === 0) {
-    return 0
-  }
+```go
+// internal/liquidity/liquidity.go
+package liquidity
 
-  // Calculate component scores (0-100 scale)
-  const volumeScore = Math.min(market.totalVolume / 1000, 100)
-  const spreadScore = Math.max(100 - (market.bidAskSpread * 1000), 0)
-  const traderScore = Math.min(market.activeTraders / 10, 100)
+import (
+    "math"
+    "time"
+)
 
-  // Recent activity bonus
-  const hoursSinceLastTrade = (Date.now() - market.lastTradeTime.getTime()) / (1000 * 60 * 60)
-  const recencyScore = Math.max(100 - (hoursSinceLastTrade * 10), 0)
+// CalculateLiquidityScore computes a liquidity score (0-100) for a market
+func CalculateLiquidityScore(market MarketData) float64 {
+    // Handle zero volume edge case
+    if market.TotalVolume == 0 {
+        return 0
+    }
 
-  // Weighted average
-  const score = (
-    volumeScore * 0.4 +
-    spreadScore * 0.3 +
-    traderScore * 0.2 +
-    recencyScore * 0.1
-  )
+    // Calculate component scores (0-100 scale)
+    volumeScore := math.Min(market.TotalVolume/1000, 100)
+    spreadScore := math.Max(100-(market.BidAskSpread*1000), 0)
+    traderScore := math.Min(float64(market.ActiveTraders)/10, 100)
 
-  return Math.min(Math.max(score, 0), 100) // Clamp to 0-100
+    // Recent activity bonus
+    hoursSinceLastTrade := time.Since(market.LastTradeTime).Hours()
+    recencyScore := math.Max(100-(hoursSinceLastTrade*10), 0)
+
+    // Weighted average
+    score := volumeScore*0.4 +
+        spreadScore*0.3 +
+        traderScore*0.2 +
+        recencyScore*0.1
+
+    // Clamp to 0-100
+    return clamp(score, 0, 100)
+}
+
+func clamp(value, min, max float64) float64 {
+    if value < min {
+        return min
+    }
+    if value > max {
+        return max
+    }
+    return value
 }
 ```
 
 ## Step 5: Run Tests - Verify PASS
 
 ```bash
-npm test lib/liquidity.test.ts
+go test ./internal/liquidity/... -v
 
-PASS lib/liquidity.test.ts
-  ✓ should return high score for liquid market (3 ms)
-  ✓ should return low score for illiquid market (2 ms)
-  ✓ should handle edge case: zero volume (1 ms)
-
-3 tests passed
+=== RUN   TestCalculateLiquidityScore_HighLiquidity
+--- PASS: TestCalculateLiquidityScore_HighLiquidity (0.00s)
+=== RUN   TestCalculateLiquidityScore_LowLiquidity
+--- PASS: TestCalculateLiquidityScore_LowLiquidity (0.00s)
+=== RUN   TestCalculateLiquidityScore_ZeroVolume
+--- PASS: TestCalculateLiquidityScore_ZeroVolume (0.00s)
+PASS
+ok      yourproject/internal/liquidity  0.002s
 ```
 
 ✅ All tests passing!
 
 ## Step 6: Refactor (IMPROVE)
 
-```typescript
-// lib/liquidity.ts - Refactored with constants and better readability
-const WEIGHTS = {
-  VOLUME: 0.4,
-  SPREAD: 0.3,
-  TRADERS: 0.2,
-  RECENCY: 0.1,
-} as const
+```go
+// internal/liquidity/liquidity.go - Refactored with constants
+package liquidity
 
-const SCALE_FACTORS = {
-  VOLUME: 1000,
-  SPREAD: 1000,
-  TRADERS: 10,
-  RECENCY_PENALTY: 10,
-} as const
+import (
+    "math"
+    "time"
+)
 
-function clamp(value: number, min: number, max: number): number {
-  return Math.min(Math.max(value, min), max)
+const (
+    // Weights for different liquidity factors
+    volumeWeight  = 0.4
+    spreadWeight  = 0.3
+    traderWeight  = 0.2
+    recencyWeight = 0.1
+)
+
+const (
+    // Scale factors for normalization
+    volumeScaleFactor  = 1000.0
+    spreadScaleFactor  = 1000.0
+    traderScaleFactor  = 10.0
+    recencyPenaltyRate = 10.0
+)
+
+// CalculateLiquidityScore computes a liquidity score (0-100) for a market
+func CalculateLiquidityScore(market MarketData) float64 {
+    if market.TotalVolume == 0 {
+        return 0
+    }
+
+    volumeScore := normalizeVolume(market.TotalVolume)
+    spreadScore := normalizeSpread(market.BidAskSpread)
+    traderScore := normalizeTraders(market.ActiveTraders)
+    recencyScore := normalizeRecency(market.LastTradeTime)
+
+    weightedScore := volumeScore*volumeWeight +
+        spreadScore*spreadWeight +
+        traderScore*traderWeight +
+        recencyScore*recencyWeight
+
+    return clamp(weightedScore, 0, 100)
 }
 
-export function calculateLiquidityScore(market: MarketData): number {
-  if (market.totalVolume === 0) return 0
+func normalizeVolume(volume float64) float64 {
+    return math.Min(volume/volumeScaleFactor, 100)
+}
 
-  const volumeScore = Math.min(market.totalVolume / SCALE_FACTORS.VOLUME, 100)
-  const spreadScore = clamp(100 - (market.bidAskSpread * SCALE_FACTORS.SPREAD), 0, 100)
-  const traderScore = Math.min(market.activeTraders / SCALE_FACTORS.TRADERS, 100)
+func normalizeSpread(spread float64) float64 {
+    return clamp(100-(spread*spreadScaleFactor), 0, 100)
+}
 
-  const hoursSinceLastTrade = (Date.now() - market.lastTradeTime.getTime()) / (1000 * 60 * 60)
-  const recencyScore = clamp(100 - (hoursSinceLastTrade * SCALE_FACTORS.RECENCY_PENALTY), 0, 100)
+func normalizeTraders(traders int) float64 {
+    return math.Min(float64(traders)/traderScaleFactor, 100)
+}
 
-  const weightedScore =
-    volumeScore * WEIGHTS.VOLUME +
-    spreadScore * WEIGHTS.SPREAD +
-    traderScore * WEIGHTS.TRADERS +
-    recencyScore * WEIGHTS.RECENCY
+func normalizeRecency(lastTrade time.Time) float64 {
+    hoursSince := time.Since(lastTrade).Hours()
+    return clamp(100-(hoursSince*recencyPenaltyRate), 0, 100)
+}
 
-  return clamp(weightedScore, 0, 100)
+func clamp(value, min, max float64) float64 {
+    if value < min {
+        return min
+    }
+    if value > max {
+        return max
+    }
+    return value
 }
 ```
 
 ## Step 7: Verify Tests Still Pass
 
 ```bash
-npm test lib/liquidity.test.ts
+go test ./internal/liquidity/... -v
 
-PASS lib/liquidity.test.ts
-  ✓ should return high score for liquid market (3 ms)
-  ✓ should return low score for illiquid market (2 ms)
-  ✓ should handle edge case: zero volume (1 ms)
-
-3 tests passed
+=== RUN   TestCalculateLiquidityScore_HighLiquidity
+--- PASS: TestCalculateLiquidityScore_HighLiquidity (0.00s)
+=== RUN   TestCalculateLiquidityScore_LowLiquidity
+--- PASS: TestCalculateLiquidityScore_LowLiquidity (0.00s)
+=== RUN   TestCalculateLiquidityScore_ZeroVolume
+--- PASS: TestCalculateLiquidityScore_ZeroVolume (0.00s)
+PASS
+ok      yourproject/internal/liquidity  0.002s
 ```
 
 ✅ Refactoring complete, tests still passing!
@@ -241,11 +314,9 @@ PASS lib/liquidity.test.ts
 ## Step 8: Check Coverage
 
 ```bash
-npm test -- --coverage lib/liquidity.test.ts
+go test ./internal/liquidity/... -cover
 
-File           | % Stmts | % Branch | % Funcs | % Lines
----------------|---------|----------|---------|--------
-liquidity.ts   |   100   |   100    |   100   |   100
+ok      yourproject/internal/liquidity  0.002s  coverage: 100.0% of statements
 
 Coverage: 100% ✅ (Target: 80%)
 ```
@@ -269,26 +340,26 @@ Coverage: 100% ✅ (Target: 80%)
 - ❌ Write too much code at once
 - ❌ Ignore failing tests
 - ❌ Test implementation details (test behavior)
-- ❌ Mock everything (prefer integration tests)
+- ❌ Over-mock (prefer table-driven tests)
 
 ## Test Types to Include
 
 **Unit Tests** (Function-level):
 - Happy path scenarios
-- Edge cases (empty, null, max values)
+- Edge cases (empty, nil, max values)
 - Error conditions
 - Boundary values
 
-**Integration Tests** (Component-level):
+**Integration Tests** (Package-level):
 - API endpoints
 - Database operations
 - External service calls
-- React components with hooks
+- Concurrent operations
 
-**E2E Tests** (use `/e2e` command):
-- Critical user flows
-- Multi-step processes
-- Full stack integration
+**Benchmark Tests** (use `/go-test` command):
+- Performance-critical functions
+- Data structure operations
+- Algorithm comparisons
 
 ## Coverage Requirements
 
@@ -313,14 +384,14 @@ Never skip the RED phase. Never write code before tests.
 
 - Use `/plan` first to understand what to build
 - Use `/tdd` to implement with tests
-- Use `/build-and-fix` if build errors occur
-- Use `/code-review` to review implementation
-- Use `/test-coverage` to verify coverage
+- Use `/go-build` if build errors occur
+- Use `/go-review` to review implementation
+- Use `/go-test` for advanced testing (benchmarks, fuzzing)
 
 ## Related Agents
 
 This command invokes the `tdd-guide` agent located at:
 `~/.claude/agents/tdd-guide.md`
 
-And can reference the `tdd-workflow` skill at:
-`~/.claude/skills/tdd-workflow/`
+And can reference the `golang-testing` skill at:
+`~/.claude/skills/golang-testing/`

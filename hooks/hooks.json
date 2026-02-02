@@ -1,9 +1,10 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "version": "2.0.0",
   "hooks": {
     "PreToolUse": [
       {
-        "matcher": "tool == \"Bash\" && tool_input.command matches \"(air|go run .*/main\\.go)\"",
+        "matcher": "tool == \"Bash\" && tool_input.command matches \"(air|go run .*/main\\\\.go)\"",
         "hooks": [
           {
             "type": "command",
@@ -37,7 +38,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node -e \"const fs=require('fs');let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{const i=JSON.parse(d);const p=i.tool_input?.file_path||'';if(/\\.(md|txt)$/.test(p)&&!/(README|CLAUDE|AGENTS|CONTRIBUTING)\\.md$/.test(p)){console.error('[Hook] BLOCKED: Unnecessary documentation file creation');console.error('[Hook] File: '+p);console.error('[Hook] Use README.md for documentation instead');process.exit(1)}console.log(d)})\""
+            "command": "node -e \"let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{const i=JSON.parse(d);const p=i.tool_input?.file_path||'';if(/\\.(md|txt)$/.test(p)&&!/(README|CLAUDE|AGENTS|CONTRIBUTING)\\.md$/.test(p)){console.error('[Hook] BLOCKED: Unnecessary documentation file creation');console.error('[Hook] File: '+p);console.error('[Hook] Use README.md for documentation instead');process.exit(1)}console.log(d)})\"",
+            "timeout": 5000
           }
         ],
         "description": "Block creation of random .md files - keeps docs consolidated"
@@ -47,7 +49,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/hooks/suggest-compact.js\""
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/hooks/suggest-compact.js\"",
+            "timeout": 5000
           }
         ],
         "description": "Suggest manual compaction at logical intervals"
@@ -59,7 +62,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/hooks/pre-compact.js\""
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/hooks/pre-compact.js\"",
+            "timeout": 10000
           }
         ],
         "description": "Save state before context compaction"
@@ -71,64 +75,47 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/hooks/session-start.js\""
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/hooks/session-start.js\"",
+            "timeout": 10000
           }
         ],
-        "description": "Load previous context and detect Go toolchain on new session"
+        "description": "Load previous context and detect Go toolchain (including gofmt, gh CLI) on new session"
       }
     ],
     "PostToolUse": [
       {
-        "matcher": "tool == \"Bash\"",
+        "matcher": "tool == \"Bash\" && tool_input.command matches \"gh pr create\"",
         "hooks": [
           {
             "type": "command",
-            "command": "node -e \"let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{const i=JSON.parse(d);const cmd=i.tool_input?.command||'';if(/gh pr create/.test(cmd)){const out=i.tool_output?.output||'';const m=out.match(/https:\\/\\/github.com\\/[^/]+\\/[^/]+\\/pull\\/\\d+/);if(m){console.error('[Hook] PR created: '+m[0]);const repo=m[0].replace(/https:\\/\\/github.com\\/([^/]+\\/[^/]+)\\/pull\\/\\d+/,'$1');const pr=m[0].replace(/.*\\/pull\\/(\\d+)/,'$1');console.error('[Hook] To review: gh pr review '+pr+' --repo '+repo)}}console.log(d)})\""
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/hooks/post-pr-create.js\"",
+            "timeout": 5000
           }
         ],
-        "description": "Log PR URL and provide review command after PR creation"
+        "description": "Extract PR URL and provide review command after PR creation (improved with JSON support)"
       },
       {
         "matcher": "tool == \"Bash\" && tool_input.command matches \"go build\"",
         "hooks": [
           {
             "type": "command",
-            "command": "node -e \"let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{console.error('[Hook] Build completed - running go vet in background');console.log(d)})\"",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/hooks/post-go-build.js\"",
             "async": true,
-            "timeout": 30
+            "timeout": 30000
           }
         ],
-        "description": "Async hook for go build analysis (runs in background without blocking)"
+        "description": "Async hook: runs go vet after build completion (actual implementation, not just logging)"
       },
       {
         "matcher": "tool == \"Edit\" && tool_input.file_path matches \"\\\\.go$\"",
         "hooks": [
           {
             "type": "command",
-            "command": "node -e \"const{execFileSync}=require('child_process');const fs=require('fs');let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{const i=JSON.parse(d);const p=i.tool_input?.file_path;if(p&&fs.existsSync(p)){try{execFileSync('gofmt',['-w',p],{stdio:['pipe','pipe','pipe']})}catch(e){}}console.log(d)})\""
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/hooks/post-go-edit.js\"",
+            "timeout": 30000
           }
         ],
-        "description": "Auto-format Go files with gofmt after edits"
-      },
-      {
-        "matcher": "tool == \"Edit\" && tool_input.file_path matches \"\\\\.go$\"",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node -e \"const{execSync}=require('child_process');const fs=require('fs');const path=require('path');let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{const i=JSON.parse(d);const p=i.tool_input?.file_path;if(p&&fs.existsSync(p)){let dir=path.dirname(p);while(dir!==path.dirname(dir)&&!fs.existsSync(path.join(dir,'go.mod'))){dir=path.dirname(dir)}if(fs.existsSync(path.join(dir,'go.mod'))){try{const r=execSync('go vet ./... 2>&1',{cwd:dir,encoding:'utf8',stdio:['pipe','pipe','pipe']});if(r.trim())console.error(r.trim())}catch(e){const out=(e.stdout||'')+(e.stderr||'');const lines=out.split('\\n').filter(l=>l.includes(path.basename(p))).slice(0,10);if(lines.length)console.error(lines.join('\\n'))}}}console.log(d)})\""
-          }
-        ],
-        "description": "Go vet check after editing .go files"
-      },
-      {
-        "matcher": "tool == \"Edit\" && tool_input.file_path matches \"\\\\.go$\"",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node -e \"const fs=require('fs');let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{const i=JSON.parse(d);const p=i.tool_input?.file_path;if(p&&fs.existsSync(p)){const c=fs.readFileSync(p,'utf8');const lines=c.split('\\n');const matches=[];lines.forEach((l,idx)=>{if(/fmt\\.Print(ln|f)?\\(/.test(l)&&!/\\/\\//.test(l.split('fmt.Print')[0]))matches.push((idx+1)+': '+l.trim())});if(matches.length){console.error('[Hook] WARNING: fmt.Print* found in '+p);matches.slice(0,5).forEach(m=>console.error(m));console.error('[Hook] Remove debug print statements before committing')}}console.log(d)})\""
-          }
-        ],
-        "description": "Warn about fmt.Print* debug statements after edits"
+        "description": "Unified Go file post-edit processing: gofmt + go vet + fmt.Print* detection (merged from 3 hooks)"
       }
     ],
     "Stop": [
@@ -137,7 +124,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/hooks/check-debug-print.js\""
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/hooks/check-debug-print.js\"",
+            "timeout": 10000
           }
         ],
         "description": "Check for fmt.Print* in modified Go files after each response"
@@ -149,7 +137,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/hooks/session-end.js\""
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/hooks/session-end.js\"",
+            "timeout": 10000
           }
         ],
         "description": "Persist session state on end"
@@ -159,7 +148,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/hooks/evaluate-session.js\""
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/hooks/evaluate-session.js\"",
+            "timeout": 15000
           }
         ],
         "description": "Evaluate session for extractable patterns"

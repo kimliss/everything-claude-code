@@ -4,9 +4,8 @@
 
 [![Stars](https://img.shields.io/github/stars/kimliss/everything-claude-code?style=flat)](https://github.com/kimliss/everything-claude-code/stargazers)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-![Shell](https://img.shields.io/badge/-Shell-4EAA25?logo=gnu-bash&logoColor=white)
-![TypeScript](https://img.shields.io/badge/-TypeScript-3178C6?logo=typescript&logoColor=white)
 ![Go](https://img.shields.io/badge/-Go-00ADD8?logo=go&logoColor=white)
+![Shell](https://img.shields.io/badge/-Shell-4EAA25?logo=gnu-bash&logoColor=white)
 ![Markdown](https://img.shields.io/badge/-Markdown-000000?logo=markdown&logoColor=white)
 
 <p align="left">
@@ -14,9 +13,9 @@
   <a href="README.zh-CN.md">简体中文</a>
 </p>
 
-**The complete collection of Claude Code configs from an Anthropic hackathon winner.**
+**The complete collection of Claude Code configs for Go development from an Anthropic hackathon winner.**
 
-Production-ready agents, skills, hooks, commands, rules, and MCP configurations evolved over 10+ months of intensive daily use building real products.
+Production-ready Go-focused agents, skills, hooks, commands, rules, and MCP configurations evolved over 10+ months of intensive daily use building real Go applications.
 
 ---
 
@@ -56,36 +55,20 @@ This repo is the raw code only. The guides explain everything.
 
 ## Cross-Platform Support
 
-This plugin now fully supports **Windows, macOS, and Linux**. All hooks and scripts have been rewritten in Node.js for maximum compatibility.
+This plugin fully supports **Windows, macOS, and Linux**. All hooks and scripts are designed for Go development workflows.
 
-### Package Manager Detection
+### Go Toolchain Requirements
 
-The plugin automatically detects your preferred package manager (npm, pnpm, yarn, or bun) with the following priority:
+The plugin automatically detects and works with your Go installation:
 
-1. **Environment variable**: `CLAUDE_PACKAGE_MANAGER`
-2. **Project config**: `.claude/package-manager.json`
-3. **package.json**: `packageManager` field
-4. **Lock file**: Detection from package-lock.json, yarn.lock, pnpm-lock.yaml, or bun.lockb
-5. **Global config**: `~/.claude/package-manager.json`
-6. **Fallback**: First available package manager
+- **Go 1.21+** recommended
+- **gofmt** - Automatic code formatting
+- **go vet** - Static analysis
+- **staticcheck** (optional) - Advanced linting
+- **golangci-lint** (optional) - Comprehensive linting
+- **govulncheck** (optional) - Vulnerability scanning
 
-To set your preferred package manager:
-
-```bash
-# Via environment variable
-export CLAUDE_PACKAGE_MANAGER=pnpm
-
-# Via global config
-node scripts/setup-package-manager.js --global pnpm
-
-# Via project config
-node scripts/setup-package-manager.js --project bun
-
-# Detect current setting
-node scripts/setup-package-manager.js --detect
-```
-
-Or use the `/setup-pm` command in Claude Code.
+The plugin will detect your Go environment on session start and configure hooks accordingly.
 
 ---
 
@@ -102,50 +85,47 @@ everything-claude-code/
 |-- agents/           # Specialized subagents for delegation
 |   |-- planner.md           # Feature implementation planning
 |   |-- architect.md         # System design decisions
-|   |-- tdd-guide.md         # Test-driven development
-|   |-- code-reviewer.md     # Quality and security review
+|   |-- tdd-guide.md         # Test-driven development (Go-focused)
+|   |-- code-reviewer.md     # General code quality review
 |   |-- security-reviewer.md # Vulnerability analysis
-|   |-- build-error-resolver.md
-|   |-- e2e-runner.md        # Playwright E2E testing
+|   |-- go-reviewer.md       # Go-specific code review
+|   |-- go-build-resolver.md # Go build error resolution
 |   |-- refactor-cleaner.md  # Dead code cleanup
 |   |-- doc-updater.md       # Documentation sync
-|   |-- go-reviewer.md       # Go code review (NEW)
-|   |-- go-build-resolver.md # Go build error resolution (NEW)
+|   |-- database-reviewer.md # Database patterns and SQL review
 |
 |-- skills/           # Workflow definitions and domain knowledge
-|   |-- coding-standards/           # Language best practices
-|   |-- backend-patterns/           # API, database, caching patterns
-|   |-- frontend-patterns/          # React, Next.js patterns
-|   |-- continuous-learning/        # Auto-extract patterns from sessions (Longform Guide)
+|   |-- coding-standards/           # Go best practices
+|   |-- backend-patterns/           # Go API, database, caching patterns
+|   |-- golang-patterns/            # Go idioms and patterns
+|   |-- golang-testing/             # Go testing, TDD, benchmarks
+|   |-- postgres-patterns/          # PostgreSQL patterns
+|   |-- clickhouse-io/              # ClickHouse operations
+|   |-- continuous-learning/        # Auto-extract patterns from sessions
 |   |-- continuous-learning-v2/     # Instinct-based learning with confidence scoring
 |   |-- iterative-retrieval/        # Progressive context refinement for subagents
-|   |-- strategic-compact/          # Manual compaction suggestions (Longform Guide)
-|   |-- tdd-workflow/               # TDD methodology
+|   |-- strategic-compact/          # Manual compaction suggestions
+|   |-- tdd-workflow/               # TDD methodology for Go
 |   |-- security-review/            # Security checklist
-|   |-- eval-harness/               # Verification loop evaluation (Longform Guide)
-|   |-- verification-loop/          # Continuous verification (Longform Guide)
-|   |-- golang-patterns/            # Go idioms and best practices (NEW)
-|   |-- golang-testing/             # Go testing patterns, TDD, benchmarks (NEW)
+|   |-- eval-harness/               # Verification loop evaluation
+|   |-- verification-loop/          # Continuous verification
 |
 |-- commands/         # Slash commands for quick execution
-|   |-- tdd.md              # /tdd - Test-driven development
+|   |-- tdd.md              # /tdd - Test-driven development (Go)
 |   |-- plan.md             # /plan - Implementation planning
-|   |-- e2e.md              # /e2e - E2E test generation
-|   |-- code-review.md      # /code-review - Quality review
-|   |-- build-fix.md        # /build-fix - Fix build errors
+|   |-- code-review.md      # /code-review - General quality review
+|   |-- go-review.md        # /go-review - Go code review
+|   |-- go-test.md          # /go-test - Go TDD workflow
+|   |-- go-build.md         # /go-build - Fix Go build errors
 |   |-- refactor-clean.md   # /refactor-clean - Dead code removal
-|   |-- learn.md            # /learn - Extract patterns mid-session (Longform Guide)
-|   |-- checkpoint.md       # /checkpoint - Save verification state (Longform Guide)
-|   |-- verify.md           # /verify - Run verification loop (Longform Guide)
-|   |-- setup-pm.md         # /setup-pm - Configure package manager
-|   |-- go-review.md        # /go-review - Go code review (NEW)
-|   |-- go-test.md          # /go-test - Go TDD workflow (NEW)
-|   |-- go-build.md         # /go-build - Fix Go build errors (NEW)
-|   |-- skill-create.md     # /skill-create - Generate skills from git history (NEW)
-|   |-- instinct-status.md  # /instinct-status - View learned instincts (NEW)
-|   |-- instinct-import.md  # /instinct-import - Import instincts (NEW)
-|   |-- instinct-export.md  # /instinct-export - Export instincts (NEW)
-|   |-- evolve.md           # /evolve - Cluster instincts into skills (NEW)
+|   |-- learn.md            # /learn - Extract patterns mid-session
+|   |-- checkpoint.md       # /checkpoint - Save verification state
+|   |-- verify.md           # /verify - Run verification loop
+|   |-- skill-create.md     # /skill-create - Generate skills from git history
+|   |-- instinct-status.md  # /instinct-status - View learned instincts
+|   |-- instinct-import.md  # /instinct-import - Import instincts
+|   |-- instinct-export.md  # /instinct-export - Export instincts
+|   |-- evolve.md           # /evolve - Cluster instincts into skills
 |
 |-- rules/            # Always-follow guidelines (copy to ~/.claude/rules/)
 |   |-- security.md         # Mandatory security checks
@@ -160,17 +140,18 @@ everything-claude-code/
 |   |-- memory-persistence/       # Session lifecycle hooks (Longform Guide)
 |   |-- strategic-compact/        # Compaction suggestions (Longform Guide)
 |
-|-- scripts/          # Cross-platform Node.js scripts (NEW)
+|-- scripts/          # Cross-platform Node.js scripts for hooks
 |   |-- lib/                     # Shared utilities
 |   |   |-- utils.js             # Cross-platform file/path/system utilities
-|   |   |-- package-manager.js   # Package manager detection and selection
 |   |-- hooks/                   # Hook implementations
-|   |   |-- session-start.js     # Load context on session start
+|   |   |-- session-start.js     # Load context and detect Go toolchain
 |   |   |-- session-end.js       # Save state on session end
 |   |   |-- pre-compact.js       # Pre-compaction state saving
 |   |   |-- suggest-compact.js   # Strategic compaction suggestions
 |   |   |-- evaluate-session.js  # Extract patterns from sessions
-|   |-- setup-package-manager.js # Interactive PM setup
+|   |   |-- post-go-build.js     # Go build post-processing (go vet)
+|   |   |-- post-go-edit.js      # Go file editing post-processing (gofmt, go vet)
+|   |   |-- post-pr-create.js    # PR creation post-processing
 |
 |-- tests/            # Test suite (NEW)
 |   |-- lib/                     # Library tests
